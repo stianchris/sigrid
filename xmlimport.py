@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This package is used to import and store XML files in dataframes via the class
-XMLimport.
+This package is used to import and store XML files originating from PSS-Syncal
+in dataframes via the class XMLimport.
 """
 
 import os
