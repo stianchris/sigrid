@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This package is used to import and store XML files originating from PSS-Syncal
-in dataframes via the class XMLimport.
+This package is used to import and store XML files originating from PSS-Sincal
+in dataframes via the class XMLimport. It is based on the etree package.
 """
 
 import os
@@ -164,8 +164,9 @@ class XMLimport():
 
         Parameters
         ----------
-        self.list_file: dict
-            a list of all files to be imported
+        :self.list_file: dict
+            a list of all files to be imported; parameter is taken from the
+            class - no input parameter
 
         Returns
         -------
