@@ -1,19 +1,24 @@
-# sigrid
 sigrid (PSS sincal importer for grids) contains Python based scripts to import networks from PSS Sincal and convert them to PyPSA and TESPy networks. It was developed during the EU-funded project ES-Flex-Infra by Christian Brosig and is now published as a free package in the hope, that it may be useful to others. Feel free to further develop it!
 
 Documentation
 =============
 
 The package consists of the modules xml_import, xml_to_pypsa and xml_to_tespy.
+xml_import is the base class and provides basic functionality.
+xml_to_pypsa implements filters to acquire the necessary data for pypsa and provides further functionality to test and process the grid.
+xml_to_tespy does the same for the tespy environment
 
 Installation
 ============
 
 There is no integration in PyPSA or TESPy yet. To use this package, just clone it. It depends on the following packages, that are not in the standard library:
-* pandas
-* pypsa
-* networkx
-* utm
+- pandas
+- networkx
+- utm
+- pypsa
+- tespy
+
+
 
 License
 =======
