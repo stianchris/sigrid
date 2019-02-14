@@ -58,7 +58,7 @@ class ImporterXMLSincal():
                  'ecoStation': ['EcoStation.xml','EcoStation_ID'],
                  'breaker': ['Breaker.xml','Terminal_ID']}
 
-    def __init__(self, name, foldername):
+    def __init__(self, name, foldername, path=False):
         """
         Initialization of the ImporterXMLSincal class.
 
@@ -76,8 +76,12 @@ class ImporterXMLSincal():
         """
         self.name = name
         self.foldername = foldername
-        # Filepath of the programm
-        self.base_path = os.path.dirname(os.path.realpath(__file__))+'/'+foldername
+        if path is False:
+            # Filepath of the programm
+            dname = os.path.dirname(os.path.realpath(__file__))
+        else:
+            dname = path
+        self.base_path = dname+'/'+foldername
 
     def __repr__(self):
         return 'ImporterXMLSincal(name: {}, folder: {})'.format(self.name,
@@ -87,7 +91,8 @@ class ImporterXMLSincal():
     def import_xml(self):
         xml = XMLimport(self.name,
                         foldername=self.foldername,
-                        list_file=self.list_file)
+                        list_file=self.list_file,
+                        path=self.base_path)
         xml.xmltodfs()
         self.xmls = xml.xmls
 
@@ -319,7 +324,7 @@ class ImporterXMLSincal():
             line_num += 1
         print('finished repairing lines')
 
-    def dfstocomponents(self, set_net_voltage='0'):
+    def dfstocomponents(self, set_net_voltage='0', with_breaker=True):
         """
         Converts and filters the dataframes from the raw xml-data
         into pypsa readable dataframes.
@@ -332,6 +337,10 @@ class ImporterXMLSincal():
             include Eco-Stations as generators or loads. In 0.4 kV
             networks, declared as general stations will be translated to
             generators. In 10 kV networks they will be translated to loads.
+        :with_breaker (boolean):
+            if this is set to false, breaker will not effect the network. If
+            set to True, lines, that are separated by breakers will be deleted.
+            Set it to false to avoid this.
 
         +++
         TODO: rewrite the function in a way, that an API can be used to
@@ -408,6 +417,9 @@ class ImporterXMLSincal():
 
         # gather all lines to be deleted here:
         self.line_del = lineterminal['Element_ID'][lineterminal['breaker_state'] == '0']
+        if not self.line_del.empty:
+            print('deleting the following lines, due to breakers in the grid:')
+            print(self.line_del.index)
 
         self.lines['bus0'] = lineterminal[lineterminal['TerminalNo']=='1']['Node_ID']
         self.lines['bus1'] = lineterminal[lineterminal['TerminalNo']=='2']['Node_ID']
@@ -436,7 +448,8 @@ class ImporterXMLSincal():
         self.lines['s_nom'] = line_fl['Ith'] * 1  # TODO: imply real formula!
 
         # delete lines, that are not connected
-        self.lines = self.lines.drop(self.line_del)
+        if with_breaker == True:
+            self.lines = self.lines.drop(self.line_del)
 
         # create slack generators dataframe (for given Infeed-nodes):
         self.generators = pd.DataFrame()

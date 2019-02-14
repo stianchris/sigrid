@@ -38,7 +38,7 @@ class XMLimport():
     """
 
     # %%
-    def __init__(self, name, foldername, list_file):
+    def __init__(self, name, foldername, list_file, path=False):
         """
         Initialization of the DHimport class.
 
@@ -66,9 +66,13 @@ class XMLimport():
         """
         self.name = name
 
-        # Filepath of the programm
-        dname = os.path.dirname(os.path.realpath(__file__))
-        self.base_path = dname+'/'+foldername
+        if path is False:
+            # Filepath of the programm
+            dname = os.path.dirname(os.path.realpath(__file__))
+            self.base_path = dname+'/'+foldername
+        else:
+            self.base_path = path
+
 
         # List of filenames which are relevant to import the network:
         self.list_file = list_file
