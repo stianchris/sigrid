@@ -1,4 +1,5 @@
-sigrid (PSS sincal importer for grids) contains Python based scripts to import networks from PSS Sincal and convert them to PyPSA and TESPy networks. It was developed during the EU-funded project ES-Flex-Infra by Christian Brosig and is now published as a free package in the hope, that it may be useful to others. Feel free to further develop it!
+sigrid (PSS sincal importer for grids) contains Python based scripts to import networks from PSS Sincal (xml-cim format) and convert them to PyPSA and TESPy networks. It was developed during the EU-funded project ES-Flex-Infra by Christian Brosig and is now published as a free package in the hope, that it may be useful to others. Feel free to further develop it!
+As the standard of XML-Cim allows a lot of different approaches for the definition of some network parameters, this program is just one way to import this data. It is very limited and there is no warranty for it!
 
 Documentation
 =============
@@ -12,11 +13,40 @@ Installation
 ============
 
 There is no integration in PyPSA or TESPy yet. To use this package, just clone it. It depends on the following packages, that are not in the standard library:
-- pandas
-- networkx
-- utm
-- pypsa
-- tespy
+* pandas
+* networkx
+* utm
+* pypsa
+* tespy
+
+HOW-TO
+======
+Import the Importer:
+
+.. code-block:: python
+  from xml_to_pypsa import ImporterXMLSincal
+
+Specify the name of the folder containing the xml-files and its upper directory (example shows the case, that the directory is the working directory):
+
+.. code-block:: python
+  dirname = os.path.dirname(os.path.realpath(__file__))
+  foldername = 'your_folder'
+
+Create an instance of the importer and import the xml-files to dataframes:
+
+.. code-block:: python
+  imp = ImporterXMLSincal('name_of_your_network',
+                        foldername=foldername,
+                        path=dirname)
+  imp.import_xml()
+
+Convert the dataframes to PyPSA components, import them to a PyPSA network and do a linear power flow:
+
+.. code-block:: python
+  imp.dfstocomponents()
+  imp.importnetwork()
+  imp.check_connectivity()
+  imp.network.lpf()
 
 
 
