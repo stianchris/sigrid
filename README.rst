@@ -1,5 +1,7 @@
 sigrid (PSS sincal importer for grids) contains Python based scripts to import networks from PSS Sincal (xml-cim format) and convert them to PyPSA and TESPy networks. It was developed during the EU-funded project ES-Flex-Infra by Christian Brosig and is now published as a free package in the hope, that it may be useful to others. Feel free to further develop it!
+
 As the standard of XML-Cim allows a lot of different approaches for the definition of some network parameters, this program is just one way to import this data. It is very limited and there is no warranty for it!
+The import to TESPy is still very limited and not at all ready to be used.
 
 Documentation
 =============
