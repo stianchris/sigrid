@@ -24,17 +24,20 @@ HOW-TO
 Import the Importer:
 
 .. code-block:: python
+  
   from xml_to_pypsa import ImporterXMLSincal
 
 Specify the name of the folder containing the xml-files and its upper directory (example shows the case, that the directory is the working directory):
 
 .. code-block:: python
+  
   dirname = os.path.dirname(os.path.realpath(__file__))
   foldername = 'your_folder'
 
 Create an instance of the importer and import the xml-files to dataframes:
 
 .. code-block:: python
+  
   imp = ImporterXMLSincal('name_of_your_network',
                         foldername=foldername,
                         path=dirname)
@@ -43,6 +46,7 @@ Create an instance of the importer and import the xml-files to dataframes:
 Convert the dataframes to PyPSA components, import them to a PyPSA network and do a linear power flow:
 
 .. code-block:: python
+  
   imp.dfstocomponents()
   imp.importnetwork()
   imp.check_connectivity()
