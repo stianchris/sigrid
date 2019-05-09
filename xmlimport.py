@@ -137,28 +137,10 @@ class XMLimport():
                 tagname = child.tag.split('}', 1)[1]
                 if tagname == 'data':
                     for element in child:
-                        # Attribute in einen dict-type umwandeln
+                        # transform the attributes to series
                         attrib = element.attrib
                         attr_series.append(pd.Series(attrib))
         return attr_series
-
-    # %%
-    def remove_whitespace(x):
-        """
-        This function allows to delete spaces in a column as well as
-        in the entire DataFrame, depending on the use case.
-        --> function is not necessarily used in this class...
-        TODO
-        ----
-            - do not use bare except!
-        """
-        try:
-            # remove spaces inside and outside of string
-            x = "".join(x.split())
-
-        except:
-            pass
-        return x
 
     # %%
     def xmltodfs(self):

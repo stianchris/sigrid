@@ -443,9 +443,9 @@ class ImporterXMLSincal():
         # Multiplication of l and x to get the overall x
         self.lines['x'] = line_fl['l'].multiply(line_fl['x'])
         # Multiplication of l and c, and radial frequency
-        self.lines['b'] = line_fl['l'].multiply(line_fl['c']*2*math.pi*50/1000)
+        self.lines['b'] = line_fl['l'].multiply(line_fl['c']*2*math.pi*50*10e-9)
 
-        self.lines['s_nom'] = line_fl['Ith'] * 1  # TODO: imply real formula!
+        self.lines['s_nom'] = line_fl['Ith'].multiply(line_fl['Un'])  # TODO: imply real formula!
 
         # delete lines, that are not connected
         if with_breaker == True:
@@ -487,6 +487,12 @@ class ImporterXMLSincal():
                 gen_name = self.xmls['node'].loc[node_id, 'Name'].strip()
                 generator = pd.Series()
                 generator.name = gen_name
+                i = 0
+                new_gen_name = gen_name
+                while new_gen_name in self.generators.index:
+                    new_gen_name = gen_name+'_'+str(i)
+                    i += 1
+                gen_name = new_gen_name
                 generator['control'] = 'slack'
 #                generator['bus'] = 'b'+str(node_id)
                 generator['bus'] = node_id
@@ -520,6 +526,130 @@ class ImporterXMLSincal():
             self.loads.index = self.loads['name']
             self.loads = self.loads.drop(columns='name')
 
+    def transform_gen_toTKN(self):
+        """
+            In low-voltage grids, isolation boxes may be mistaken for
+            generators. In german they are referred to as "Trennkästen",
+            with the abbreviation TKN. In this function they are filtered and
+            disconnected. In a second step sub_networks are searched for,
+            which are not fed by any generator and possess an isolation box.
+            These are then reconnected to the grid with generator.
+
+            Parameters:
+            ----------
+                None
+            
+        """
+        if hasattr(self, 'network'):
+            print('transforming gens to TKN')
+            tkn = pd.DataFrame(columns=self.network.generators.columns)
+            for name in self.network.generators.index:
+                if 'TKN' in name:
+                    tkn.loc[name] = self.network.generators.loc[name]
+
+            # lines with TKN are split and new buses for each line created
+            line_list = {}
+            for line in self.lines.index:
+                if self.lines.loc[line].bus0 in tkn.bus.values:
+                    bus_name = self.lines.loc[line].bus0
+                    x = self.network.buses.loc[bus_name].x
+                    y = self.network.buses.loc[bus_name].y
+                    f = self.network.buses.loc[bus_name].frequency
+                    v_nom = self.network.buses.loc[bus_name].v_nom
+                    bus_name = bus_name + '_tkn'
+                    while bus_name in line_list:
+                        bus_name = bus_name + 'i'
+                    self.network.lines.bus0[line] = bus_name
+                    self.network.add('Bus',
+                                     bus_name,
+                                     x=x,
+                                     y=y,
+                                     v_nom=v_nom)
+                    line_list[bus_name] = line
+                    print('processing line {}'.format(line))
+                if self.lines.loc[line].bus1 in tkn.bus.values:
+                    bus_name = self.lines.loc[line].bus1
+                    x = self.network.buses.loc[bus_name].x
+                    y = self.network.buses.loc[bus_name].y
+                    f = self.network.buses.loc[bus_name].frequency
+                    v_nom = self.network.buses.loc[bus_name].v_nom
+                    bus_name = bus_name + '_tkn'
+                    while bus_name in line_list:
+                        bus_name = bus_name + 'i'
+                    self.network.lines.bus1[line] = bus_name
+                    self.network.add('Bus',
+                                     bus_name,
+                                     x=x,
+                                     y=y,
+                                     v_nom=v_nom)
+                    line_list[bus_name] = line
+                    print('processing line {}'.format(line))
+
+            # delete all tkn generators and their (no longer connected) buses from the network:
+            for gen in tkn.index:
+                self.network.remove('Bus', tkn.loc[gen].bus)
+                self.network.remove('Generator', gen)
+
+
+            def refresh_lists(self):
+                func_list = []
+                non_func_list = []
+                print('Determining network topology')
+                self.network.determine_network_topology()
+                #self.network.lpf() # TODO: check if also determine-function is sufficient!
+                print('Reconnecting sub_networks without gen, with TKN')
+
+                for sub_network in self.network.sub_networks.obj:
+                    gens = sub_network.generators()
+                    has_gen = True
+                    if len(gens) == 0:
+    #                    print('sub {} has no generator'.format(sub_network))
+                        has_gen = False
+                    has_tkn = False
+                    tkn_bus = []
+                    # HIER IST NOCH EIN FEHLER DRIN:
+                    for bus in sub_network.buses().index:
+                        if 'tkn' in bus:
+                            has_tkn = True
+                            tkn_bus += [bus]
+                    if has_tkn and has_gen:
+                        print('functional sub_net with {}'.format(tkn_bus))
+                        func_list += [tkn_bus]
+                    if has_tkn and not has_gen:
+                        non_func_list +=[tkn_bus]
+                return func_list, non_func_list
+
+            func_list, non_func_list = refresh_lists(self)
+            con_accum = True
+            while non_func_list and con_accum:
+                con_accum = False
+                for tkn in non_func_list:
+                    while con_accum is False and tkn:
+                        tkn_bus = tkn.pop()
+                        tkn_bus_org = tkn_bus
+                        while 'i' in tkn_bus:
+                            tkn_bus = tkn_bus[0:-1]
+                        con_bus = False
+                        for func_buses in func_list:
+                            for func_bus in func_buses:
+                                if tkn_bus in func_bus:
+                                    con_bus = func_bus
+                        if con_bus is not False:
+                            con_accum = True
+                            line_name = con_bus+tkn_bus_org
+                            self.network.add('Line',
+                                             line_name,
+                                             bus0=tkn_bus_org,
+                                             bus1=con_bus,
+                                             b=0.0000002,
+                                             r=0.0001,
+                                             x=0.0001)
+                    # get rid of empty lists
+                non_func_list = [x for x in non_func_list if x != []]
+                func_list, non_func_list = refresh_lists(self)
+#            print(non_func_list)
+
+#                
     def check_busbars(self):
         """
         Check, if nodes are connected via busbars, which in PSS-Sincal is
@@ -838,6 +968,41 @@ class ImporterXMLSincal():
                     print("\tNodes:", sg.nodes(data=True))
                     print("\tEdges:", sg.edges())
 
+    def del_nogen_subs(self):
+        """
+        function deletes subgraphs that have no (slack) generator.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+
+        +++
+        TODO:
+            - find a faster way to define the subnetwork - this is too long!
+        +++
+        """
+        for subnet in self.network.sub_networks.index:
+            sub = self.network[self.network.buses.sub_network == subnet]
+            if len(sub.generators) == 0:
+                sub_buses = sub.buses
+                sub_lines = sub.lines
+                sub_generators = sub.generators
+                sub_loads = sub.loads
+                for bus in sub_buses.index:
+                    self.network.remove('Bus', name=bus)
+                for line in sub_lines.index:
+                    self.network.remove('Line', name=line)
+                for generator in sub_generators.index:
+                    self.network.remove('Generator', name=generator)
+                for load in sub_loads.index:
+                    self.network.remove('Load', name=load)
+                print('removed subnetwork {}'.format(subnet))
+            
+            
     def del_littlesubgraphs(self, max_busnumber=1):
         """
         function deletes subgraphs that are too small.
@@ -874,6 +1039,7 @@ class ImporterXMLSincal():
                     self.network.remove('Generator', name=generator)
                 for load in sub_loads.index:
                     self.network.remove('Load', name=load)
+                print('removed subnetwork {}'.format(subnet))
 
     def plot_subgraphs(self, networkname):
         """
@@ -896,7 +1062,7 @@ class ImporterXMLSincal():
             plt.close(fig)
             print('bla')
 
-    def plot_subgraphs_onefig(self, save=False):
+    def plot_subgraphs_onefig(self, save=False, bus_sizes=10):
         """
         This function plots subgraphs in one figure with separate colors for
         each one.
@@ -920,7 +1086,8 @@ class ImporterXMLSincal():
             color = '#%02X%02X%02X' % (r(), r(), r())
             sub = self.network[self.network.buses.sub_network == subnet]
             sub.plot(ax=ax,
-                     line_colors=color)
+                     line_colors=color,
+                     bus_sizes=bus_sizes)
             print('integrated subnet {}'.format(subnet))
         if save is True:
             fig.savefig(path+'subnetsincolor.png')
